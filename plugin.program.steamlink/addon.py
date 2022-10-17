@@ -1,72 +1,73 @@
 """Steamlink Launcher for OSMC"""
 import os
+import subprocess
 import xbmc
 import xbmcgui
 import xbmcaddon
+from urllib.request import urlretrieve
 
 __plugin__ = "steamlink"
 __author__ = "toast"
 __url__ = "https://github.com/swetoast/steamlink-launcher/"
 __git_url__ = "https://github.com/swetoast/steamlink-launcher/"
 __credits__ = "toast"
-__version__ = "0.0.13"
+__version__ = "0.0.14"
 
-dialog = xbmcgui.Dialog()
-addon = xbmcaddon.Addon(id='plugin.program.steamlink')
+#dialog = xbmcgui.Dialog()
+__addon__ = xbmcaddon.Addon(id='plugin.program.steamlink')
+__addonname__ = __addon__.getAddonInfo('name')
+__icon__ = __addon__.getAddonInfo('icon')
 
-def main():
-    """Main operations of this plugin."""
-    create_files()
-    output = os.popen("sh /tmp/steamlink-launcher.sh").read()
-    dialog.ok("Starting Steamlink...", output)
+# Show notification in the upper right corner
+def ShowNotification(line):
+    print(line)
+    xbmc.executebuiltin('Notification(%s, %s, %d, %s)'%(__addonname__, line, 5000, __icon__))
 
-def create_files():
-    """Creates bash files to be used for this plugin."""
-    with open('/tmp/steamlink-launcher.sh', 'w') as outfile:
-        outfile.write("""#!/bin/bash
+def InstallSteamLink():
+    # Install dependencies
+    ShowNotification("Installing dependencies...")
+    subprocess.run(["sudo", "apt", "install" "-y", "libegl1", "libgl1-mesa-dri", "libgles2", "curl", "gnupg", "wakeonlan", "dnsutils", "cec-utils", "libusb-1.0-0", "libx11-6", "libxext6", "libxkbcommon-x11-0", "libegl1-mesa", "libgles2-mesa"])
+
+    # Install Steam Link
+    ShowNotification("Installing Steam Link...")
+    deb_source = "http://media.steampowered.com/steamlink/rpi/latest/steamlink.deb"
+    deb_target = "/tmp/steamlink.deb"
+    urlretrieve(deb_source, deb_target)
+    subprocess.run(["sudo", "apt", "install", "-f", deb_target]) # sudo apt install /tmp/steamlink.deb
+    os.remove(deb_target)
+
+def StartSteamLink():
+    ShowNotification("Starting... please wait...")
+
+    with open("/tmp/steamlink-launcher.sh", "w") as outfile:
+        outfile.write("""#!/usr/bin/env bash
+touch /home/osmc/.local/share/SteamLink/.ignore_gpumem
+touch /home/osmc/.local/share/SteamLink/.ignore_cec
+sudo ln -sf /home/osmc/.local/share/SteamLink/udev/modules-load.d/uinput.conf /etc/modules-load.d/uinput.conf
+sudo ln -sf /home/osmc/.local/share/SteamLink/udev/rules.d/56-steamlink.rules /lib/udev/rules.d/56-steamlink.rules
 chmod 755 /tmp/steamlink-watchdog.sh
 sudo openvt -c 7 -s -f clear
-sudo su -c "nohup sudo openvt -c 7 -s -f -l /tmp/steamlink-watchdog.sh >/dev/null 2>&1 &"
+sudo su -c "nohup sudo openvt -c 7 -s -f -l /tmp/steamlink-watchdog.sh >/tmp/steamlink-watchdog.log 2>&1 &"
 """)
         outfile.close()
-    with open('/tmp/steamlink-watchdog.sh', 'w') as outfile:
-        outfile.write("""#!/bin/bash
-        sudo apt update # write a better update check
-if ! dpkg --list | grep -q gnupg; then 
-   kodi-send --action="Notification(Downloading and installing Steamlink dependencies (gnupg)... ,3000)"
-   sudo apt install gnupg -y
-fi
-if ! dpkg --list | grep -q curl; then 
-    kodi-send --action="Notification(Downloading and installing Steamlink dependencies (curl)... ,3000)" 
-    sudo apt install curl -y 
-fi
-if ! dpkg --list | grep -q libgles2; then 
-    kodi-send --action="Notification(Downloading and installing Steamlink dependencies (libgles2)... ,3000)" 
-    sudo apt install libgles2 -y 
-fi
-if ! dpkg --list | grep -q libegl1; then 
-    kodi-send --action="Notification(Downloading and installing Steamlink dependencies (libegl1)... ,3000)" 
-    sudo apt install libegl1 -y 
-fi
-if ! dpkg --list | grep -q libgl1-mesa-dri; then 
-    kodi-send --action="Notification(Downloading and installing Steamlink dependencies (libgl1-mesa-dri)... ,3000)" 
-    sudo apt install libgl1-mesa-dri -y 
-fi
-if [ "$(which steamlink)" = "" ]; then
-    kodi-send --action="Notification(Downloading and installing Steamlink Application... ,3000)" 
-    curl -o /tmp/steamlink.deb -#Of http://media.steampowered.com/steamlink/rpi/latest/steamlink.deb
-    sudo dpkg -i /tmp/steamlink.deb
-    rm -f /tmp/steamlink.deb
-fi
-if [ -f "/home/osmc/.wakeup" ] 
-   then /usr/bin/wakeonlan "$(cat "/home/osmc/.wakeup")"
-   else sudo apt install wakeonlan -y; /usr/bin/wakeonlan "$(cat "/home/osmc/.wakeup")" 
-fi
+
+    with open("/tmp/steamlink-watchdog.sh", "w") as outfile:
+        outfile.write("""#!/usr/bin/env bash
 systemctl stop mediacenter
 if [ "$(systemctl is-active hyperion.service)" = "active" ]; then systemctl restart hyperion; fi
-sudo -u osmc steamlink
+sudo -u osmc steamlink >/tmp/steamlink.log 2>&1
 openvt -c 7 -s -f clear
 systemctl start mediacenter
 """)
         outfile.close()
-main()
+
+    # start steam link
+    subprocess.run(["sh", "/tmp/steamlink-launcher.sh"])
+
+def Main():
+    if subprocess.run(["which", "steamlink"]).returncode > 0:
+        InstallSteamLink()
+
+    StartSteamLink()
+
+Main()
