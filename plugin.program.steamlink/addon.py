@@ -26,7 +26,7 @@ def ShowNotification(line):
 def InstallSteamLink():
     # Install dependencies
     ShowNotification("Installing dependencies...")
-    subprocess.run(["sudo", "apt", "install" "-y", "libegl1", "libgl1-mesa-dri", "libgles2", "libpulse0", "curl", "gnupg", "wakeonlan", "dnsutils", "cec-utils", "openssl", "libusb-1.0-0", "libx11-6", "libxext6", "libxkbcommon-x11-0", "libegl1", "libegl1-mesa", "libgles2-mesa", "libavcodec58" ])
+    subprocess.run(["sudo", "apt", "install", "-y", "libegl1", "libgl1-mesa-dri", "libgles2", "libpulse0", "curl", "gnupg", "wakeonlan", "dnsutils", "cec-utils", "openssl", "libusb-1.0-0", "libx11-6", "libxext6", "libxkbcommon-x11-0", "libegl1", "libegl1-mesa", "libgles2-mesa", "libavcodec58"])
 
     # Install Steam Link
     ShowNotification("Installing Steam Link...")
