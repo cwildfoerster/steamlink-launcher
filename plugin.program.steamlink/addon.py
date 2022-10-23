@@ -30,7 +30,7 @@ def InstallSteamLink():
 
     # Install Steam Link
     ShowNotification("Installing Steam Link...")
-    deb_source = "http://media.steampowered.com/steamlink/rpi/latest/steamlink.deb"
+    deb_source = "https://media.steampowered.com/steamlink/rpi/latest/steamlink.deb"
     deb_target = "/tmp/steamlink.deb"
     urlretrieve(deb_source, deb_target)
     subprocess.run(["sudo", "apt", "install", "-f", deb_target]) # sudo apt install /tmp/steamlink.deb
